@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Business Lead Finder Tool</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+
+        <header class="main-header">
+            <h1 class="gradient-title">Lead Finder 🚀</h1>
+            <p class="subtitle">
+                Find high-quality local leads and generate messages to get clients 💰
+            </p>
+        </header>
+
+        <section class="search-container">
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="e.g. gym in Vadodara">
+
+                <select id="categorySelect">
+                    <option value="gym">Gym</option>
+                    <option value="salon">Salon</option>
+                    <option value="cafe">Cafe</option>
+                    <option value="restaurant">Restaurant</option>
+                    <option value="agency">Agency</option>
+                </select>
+            </div>
+
+            <div class="button-group">
+                <button id="searchBtn">🔍 Search Leads</button>
+                <button id="exportBtn" class="secondary-button hidden">📤 Export CSV</button>
+            </div>
+        </section>
+
+        <!-- 📊 Stats -->
+        <div id="statsBar" class="stats-bar"></div>
+
+        <!-- ⏳ Loader -->
+        <div id="loader" class="hidden">
+            <div class="loader-wrapper">
+                <div class="spinner"></div>
+                <div class="loading-text">Scraping Google Maps... Hold tight!</div>
+            </div>
+        </div>
+
+        <!-- 📦 Results -->
+        <section id="resultsContainer" class="results">
+            <div id="emptyState" class="empty-state hidden">    
+                <h3>No leads yet 👀</h3>
+                <p>Search something like "gym in vadodara"</p>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container">
+        <div id="toast" class="toast hidden">Copied to clipboard! ✓</div>
+    </div>
+
+    <footer class="footer">
+        Built for freelancers • Find clients faster 🚀
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
