@@ -41,7 +41,7 @@ async function searchLeads() {
     searchBtn.textContent = "Searching...";
     loader.classList.remove("hidden");
     resultsContainer.innerHTML = '';
-emptyState.classList.add('hidden');
+    emptyState.classList.add('hidden');
 
     try {
         // Fetch Leads from Backend Express Server
@@ -58,11 +58,11 @@ emptyState.classList.add('hidden');
         const leads = await res.json();
 
         if (!leads || leads.length === 0) {
-    emptyState.classList.remove('hidden');
-    resultsContainer.innerHTML = '';
-    exportBtn.classList.add('hidden');
-    return;
-}
+            emptyState.classList.remove('hidden');
+            resultsContainer.innerHTML = '';
+            exportBtn.classList.add('hidden');
+            return;
+        }
 
         currentLeads = leads;
         emptyState.classList.add('hidden');
@@ -70,7 +70,7 @@ emptyState.classList.add('hidden');
 
         const category = categorySelect.value;
 
-        
+
         const statsBar = document.getElementById('statsBar');
 
         const total = leads.length;
@@ -125,9 +125,26 @@ async function createLeadCard(lead, category) {
         card.style.animationDelay = `${currentCount * 0.1}s`;
 
         // Format Web Text securely based on bool logic
-        const webText = lead.website
-            ? '<span style="color:var(--success-color)">✅ Yes</span>'
-            : '<span style="color:red; font-weight:bold;">❌ No Website (High Priority)</span>';
+        let webText;
+
+        if (lead.website && lead.websiteLink) {
+            let domain;
+
+            try {
+                const url = new URL(lead.websiteLink);
+                domain = url.hostname.replace('www.', '');
+            } catch {
+                domain = lead.websiteLink;
+            }
+
+            webText = `
+        <a href="${lead.websiteLink}" target="_blank" style="color:var(--success-color); text-decoration:underline;">
+            🌐 ${domain}
+        </a>
+    `;
+        } else {
+            webText = '<span style="color:red; font-weight:bold;">❌ No Website (High Priority)</span>';
+        }
 
         card.innerHTML = `
             <div class="card-header">
@@ -148,13 +165,12 @@ async function createLeadCard(lead, category) {
         Copy Msg
     </button>
 
-    ${
-        lead.whatsapp 
-        ? `<a href="${lead.whatsapp}?text=${encodeURIComponent(message)}" target="_blank">
+    ${lead.whatsapp
+                ? `<a href="${lead.whatsapp}?text=${encodeURIComponent(message)}" target="_blank">
             <button class="btn-success">WhatsApp</button>
           </a>`
-        : ''
-    }
+                : ''
+            }
 
     <a href="${escapeHTML(lead.link)}" target="_blank">
         <button class="btn-secondary">Open Maps</button>
