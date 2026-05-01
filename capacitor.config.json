@@ -1,0 +1,9 @@
+{
+  "appId": "com.leadfinder.app",
+  "appName": "Lead Finder",
+  "webDir": "public",
+  "server": {
+    "url": "http://172.30.196.133:5000",
+    "cleartext": true
+  }
+}

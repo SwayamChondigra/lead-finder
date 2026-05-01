@@ -1,8 +1,13 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
-const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs");
+
+// ✅ Fix fetch for Node
+const fetch = (...args) =>
+  import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -11,210 +16,143 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+// ================= SEARCH =================
 app.post("/search", async (req, res) => {
   const { query } = req.body;
 
   if (!query) {
-    return res.status(400).json({ error: "Search query is required" });
+    return res.status(400).json({ error: "Query is required" });
   }
 
-  let browser;
-
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
-
-    const page = await browser.newPage();
-
-    const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
-    await page.goto(searchUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
-    });
-
-    // Wait for results
-    await page.waitForSelector('a[href*="/maps/place/"]', { timeout: 15000 });
-
-    // Scroll for more results
-    for (let i = 0; i < 10; i++) {
-      await page.evaluate(() => {
-        const feed = document.querySelector('[role="feed"]');
-        if (feed) feed.scrollBy(0, 1000);
-      });
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-
-    const items = await page.$$eval('a[href*="/maps/place/"]', (els) =>
-      els.map((el) => ({
-        name: el.getAttribute("aria-label") || "Unknown",
-        link: el.href,
-        parentText: el.closest('[role="article"]')?.innerText || "",
-      })),
+    const searchRes = await fetch(
+      `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(
+        query,
+      )}&key=${process.env.API_KEY}`,
     );
 
-    // Remove duplicates
-    const rawLeads = [];
-    for (const item of items) {
-      if (
-        item.name !== "Unknown" &&
-        !rawLeads.find((l) => l.name === item.name)
-      ) {
-        rawLeads.push(item);
+    const searchData = await searchRes.json();
+
+    let allResults = [...searchData.results];
+
+    // 👉 GET MORE RESULTS USING NEXT PAGE
+    if (searchData.next_page_token) {
+      await new Promise((r) => setTimeout(r, 2000)); // required delay
+
+      const nextRes = await fetch(
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken=${searchData.next_page_token}&key=${process.env.API_KEY}`,
+      );
+
+      const nextData = await nextRes.json();
+
+      if (nextData.results) {
+        allResults = allResults.concat(nextData.results);
       }
     }
 
-    const maxItems = Math.min(rawLeads.length, 15);
-    const data = [];
-
-    for (let i = 0; i < maxItems; i++) {
-      const lead = rawLeads[i];
-
-      try {
-        const detailPage = await browser.newPage();
-
-        await detailPage.goto(lead.link, {
-          waitUntil: "domcontentloaded",
-          timeout: 20000,
-        });
-
-        await detailPage
-          .waitForSelector("h1", { timeout: 5000 })
-          .catch(() => {});
-        await new Promise((r) => setTimeout(r, 2000));
-
-        const leadInfo = await detailPage.evaluate(() => {
+    const results = await Promise.all(
+      allResults
+        .sort(() => Math.random() - 0.5).slice(0, 10).map(async (place) => {
+          let website = null;
+          let domain = null;
           let phone = "Not Available";
 
-          const phoneEl = document.querySelector(
-            'button[data-item-id*="phone"]',
-          );
-          if (phoneEl) {
-            phone = phoneEl.innerText;
-          }
+          if (place.place_id) {
+            try {
+              const detailsRes = await fetch(
+                `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=name,website,formatted_phone_number&key=${process.env.API_KEY}`,
+              );
 
-          let website = false;
-          let websiteLink = null;
+              const detailsData = await detailsRes.json();
 
-          // Get all possible links
-          const links = Array.from(
-            document.querySelectorAll('a[href^="http"]'),
-          );
+              if (detailsData.result) {
+                if (detailsData.result.website) {
+                  try {
+                    const url = new URL(detailsData.result.website);
+                    const hostname = url.hostname.replace("www.", "");
 
-          const blocked = [
-            "instagram.com",
-            "facebook.com",
-            "wa.me",
-            "whatsapp.com",
-            "swiggy.com",
-            "zomato.com",
-            "justdial.com",
-            "google.com",
-            "googleusercontent.com",
-            "maps.google",
-          ];
+                    // ❌ BLOCK THESE FAKE "WEBSITES"
+                    const blockedDomains = [
+                      "instagram.com",
+                      "facebook.com",
+                      "swiggy.com",
+                      "zomato.com",
+                      "justdial.com",
+                      "google.com",
+                      "business.site",
+                    ];
 
-          for (const link of links) {
-            const url = link.href.toLowerCase();
+                    const isFake = blockedDomains.some((d) =>
+                      hostname.includes(d),
+                    );
 
-            const isBlocked = blocked.some((site) => url.includes(site));
+                    if (!isFake) {
+                      website = detailsData.result.website;
+                      domain = hostname;
+                    }
+                  } catch {}
+                }
 
-            if (
-              !isBlocked &&
-              url.includes(".") &&
-              !url.includes("/maps") &&
-              !url.includes("search")
-            ) {
-              website = true;
-              websiteLink = link.href;
-              break; // pick first valid one
+                if (detailsData.result.formatted_phone_number) {
+                  phone = detailsData.result.formatted_phone_number;
+                }
+              }
+            } catch (err) {
+              console.log("Details fetch error:", err);
             }
           }
-          console.log("Website:", website, "Link:", websiteLink);
-          return { phone, website, websiteLink };
-        });
 
-        await detailPage.close();
+          return {
+            name: place.name,
+            rating: place.rating || "N/A",
+            address: place.formatted_address,
+            link: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}`,
+            phone,
+            website,
+            domain,
+            priority: !website,
+          };
+        }),
+    );
 
-        // Extract rating
-        let rating = "N/A";
-        const match = lead.parentText.match(/(\d\.\d)/);
-        if (match) rating = match[1];
-
-        // WhatsApp link
-        const whatsapp =
-          leadInfo.phone !== "Not Available"
-            ? `https://wa.me/91${leadInfo.phone.replace(/\D/g, "")}`
-            : null;
-
-        data.push({
-          name: lead.name,
-          rating,
-          phone: leadInfo.phone,
-          website: leadInfo.website,
-          priority: !leadInfo.website,
-          websiteLink: leadInfo.websiteLink,
-          whatsapp,
-          link: lead.link,
-        });
-      } catch (err) {
-        console.log("Error extracting item", i, err.message);
-      }
-    }
-
-    // Sort: priority first, then rating
-    data.sort((a, b) => {
-      if (a.priority === b.priority) {
-        return parseFloat(b.rating || 0) - parseFloat(a.rating || 0);
-      }
-      return b.priority - a.priority;
-    });
-
-    await browser.close();
-
-    return res.json(data);
-  } catch (error) {
-    if (browser) await browser.close();
-    console.error("Scraping Error:", error.message);
-    return res.status(500).json({ error: "Scraping failed" });
+    res.json(results);
+  } catch (err) {
+    console.log("Search Error:", err);
+    res.status(500).json({ error: "Failed to fetch leads" });
   }
 });
 
+// ================= MESSAGE =================
 app.post("/message", (req, res) => {
   const { category, name } = req.body;
 
-  const message = `Hi ${name},I’m a web developer👋
+  const message = `Hi ${name}, I came across your business on Google Maps.
 I help local ${category}s get more customers by building modern websites.
-I noticed your cafe doesn’t have a strong website presence, so I created a demo idea for you.
+I created a demo idea for businesses like yours.
 Would you like to see it?`;
 
   res.json({ message });
 });
 
+// ================= EXPORT =================
 app.post("/export", (req, res) => {
   const { leads } = req.body;
 
-  let csv = "Name,Rating,Phone,Website,Link,Message\n";
+  let csv = "Name,Rating,Phone,Website,Link,Message,WhatsApp\n";
+
+  const clean = (val) => {
+    if (!val) return "";
+    return String(val)
+      .replace(/"/g, '""')
+      .replace(/\n/g, " ")
+      .replace(/\r/g, " ");
+  };
 
   leads.forEach((l) => {
-    const clean = (val) => {
-      if (!val) return "";
-      return String(val)
-        .replace(/"/g, '""') // escape quotes
-        .replace(/\n/g, " ") // remove line breaks
-        .replace(/\r/g, " ");
-    };
-
     const name = clean(l.name);
     const rating = clean(l.rating);
     const phone = l.phone ? `="${l.phone}"` : "";
-    const website = l.website ? "Yes" : "No";
+    const website = l.domain || "No Website";
     const link = clean(l.link);
     const message = clean(l.message);
     const whatsapp = l.whatsapp || "";
@@ -227,9 +165,10 @@ app.post("/export", (req, res) => {
 
   fs.writeFileSync(filepath, csv);
 
-  res.json({ fileUrl: `http://localhost:${PORT}/${filename}` });
+  res.json({ fileUrl: `${req.protocol}://${req.get('host')}/${filename}` });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+// ================= START =================
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
