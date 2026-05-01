@@ -45,7 +45,7 @@ async function searchLeads() {
 
   try {
     // Fetch Leads from Backend Express Server
-    const res = await fetch("http://192.168.1.8:5000/search", {
+    const res = await fetch("/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query }),
@@ -96,7 +96,7 @@ async function searchLeads() {
 
 async function createLeadCard(lead, category) {
   try {
-    const msgRes = await fetch("http://192.168.1.8:5000/message", {
+    const msgRes = await fetch("/message", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ category, name: lead.name }),
@@ -212,7 +212,7 @@ exportBtn.addEventListener("click", async () => {
   exportBtn.textContent = "Exporting...";
 
   try {
-    const res = await fetch("http://192.168.1.8:5000/export", {
+    const res = await fetch("/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ leads: currentLeads }),
