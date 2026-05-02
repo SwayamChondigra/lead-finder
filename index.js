@@ -141,7 +141,7 @@ Would you like to see it?`;
 app.post("/export", (req, res) => {
   const { leads } = req.body;
 
-  let csv = "Name,Rating,Phone,Website,Link,Message,WhatsApp\n";
+  let csv = "Name,Rating,Phone,Website,Link\n";
 
   const clean = (val) => {
     if (!val) return "";
@@ -157,10 +157,8 @@ app.post("/export", (req, res) => {
     const phone = l.phone ? `="${l.phone}"` : "";
     const website = l.domain || "No Website";
     const link = clean(l.link);
-    const message = clean(l.message);
-    const whatsapp = l.whatsapp || "";
 
-    csv += `"${name}","${rating}","${phone}","${website}","${link}","${message}","${whatsapp}"\n`;
+    csv += `"${name}","${rating}","${phone}","${website}","${link}"\n`;
   });
 
   const filename = `leads-${Date.now()}.csv`;
