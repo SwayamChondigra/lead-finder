@@ -1,7 +1,7 @@
 const BASE_URL =
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1"
-    ? "http://192.168.1.8:5000"  // your local backend
+    ? "http://192.168.1.8:5000" // your local backend
     : ""; // Render uses same origin
 
 const searchBtn = document.getElementById("searchBtn");
@@ -70,7 +70,7 @@ async function searchLeads() {
       return;
     }
 
-    currentLeads = leads.filter(l => !l.website);
+    currentLeads = leads.filter((l) => !l.website);
     emptyState.classList.add("hidden");
     exportBtn.classList.remove("hidden");
 
@@ -226,7 +226,23 @@ exportBtn.addEventListener("click", async () => {
 
     if (!res.ok) throw new Error("Export failed");
 
-    const data = await res.json();
+    const res = await fetch(`${BASE_URL}/export`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ leads: currentLeads }),
+    });
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "leads.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
 
     const a = document.createElement("a");
     a.href = data.fileUrl;

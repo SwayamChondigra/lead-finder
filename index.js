@@ -161,12 +161,13 @@ app.post("/export", (req, res) => {
     csv += `"${name}","${rating}","${phone}","${website}","${link}"\n`;
   });
 
-  const filename = `leads-${Date.now()}.csv`;
-  const filepath = path.join(__dirname, "public", filename);
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader(
+    "Content-Disposition",
+    "attachment; filename=leads.csv"
+  );
 
-  fs.writeFileSync(filepath, csv);
-
-  res.json({ fileUrl: `${req.protocol}://${req.get("host")}/${filename}` });
+  res.send(csv);
 });
 
 // ================= START =================
