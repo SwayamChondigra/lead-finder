@@ -220,19 +220,13 @@ exportBtn.addEventListener("click", async () => {
   try {
     const res = await fetch(`${BASE_URL}/export`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ leads: currentLeads }),
-    });
-
-    if (!res.ok) throw new Error("Export failed");
-
-    const res = await fetch(`${BASE_URL}/export`, {
-      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ leads: currentLeads }),
     });
+
+    if (!res.ok) throw new Error("Export failed");
 
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
@@ -244,22 +238,16 @@ exportBtn.addEventListener("click", async () => {
     a.click();
     a.remove();
 
-    const a = document.createElement("a");
-    a.href = data.fileUrl;
-    a.download = data.fileUrl.split("/").pop();
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-    exportBtn.textContent = "Exported! ✓";
+    exportBtn.textContent = "Exported ✓";
     setTimeout(() => {
-      exportBtn.textContent = "Export to CSV";
+      exportBtn.textContent = "Export CSV";
       exportBtn.disabled = false;
-    }, 2500);
+    }, 2000);
+
   } catch (e) {
     console.error(e);
-    alert("Failed to export CSV.");
+    alert("Failed to export CSV");
     exportBtn.disabled = false;
-    exportBtn.textContent = "Export to CSV";
+    exportBtn.textContent = "Export CSV";
   }
 });
