@@ -52,7 +52,9 @@ app.post("/search", async (req, res) => {
 
     const results = await Promise.all(
       allResults
-        .sort(() => Math.random() - 0.5).slice(0, 10).map(async (place) => {
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 20)
+        .map(async (place) => {
           let website = null;
           let domain = null;
           let phone = "Not Available";
@@ -115,7 +117,8 @@ app.post("/search", async (req, res) => {
         }),
     );
 
-    res.json(results);
+    const filtered = results.filter((r) => !r.website);
+    res.json(filtered);
   } catch (err) {
     console.log("Search Error:", err);
     res.status(500).json({ error: "Failed to fetch leads" });
@@ -165,7 +168,7 @@ app.post("/export", (req, res) => {
 
   fs.writeFileSync(filepath, csv);
 
-  res.json({ fileUrl: `${req.protocol}://${req.get('host')}/${filename}` });
+  res.json({ fileUrl: `${req.protocol}://${req.get("host")}/${filename}` });
 });
 
 // ================= START =================

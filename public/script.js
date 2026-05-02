@@ -1,3 +1,9 @@
+const BASE_URL =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1"
+    ? "http://192.168.1.8:5000"  // your local backend
+    : ""; // Render uses same origin
+
 const searchBtn = document.getElementById("searchBtn");
 const searchInput = document.getElementById("searchInput");
 const categorySelect = document.getElementById("categorySelect");
@@ -45,7 +51,7 @@ async function searchLeads() {
 
   try {
     // Fetch Leads from Backend Express Server
-    const res = await fetch("/search", {
+    const res = await fetch(`${BASE_URL}/search`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query }),
@@ -64,7 +70,7 @@ async function searchLeads() {
       return;
     }
 
-    currentLeads = leads;
+    currentLeads = leads.filter(l => !l.website);
     emptyState.classList.add("hidden");
     exportBtn.classList.remove("hidden");
 
@@ -96,7 +102,7 @@ async function searchLeads() {
 
 async function createLeadCard(lead, category) {
   try {
-    const msgRes = await fetch("/message", {
+    const msgRes = await fetch(`${BASE_URL}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ category, name: lead.name }),
@@ -150,7 +156,7 @@ async function createLeadCard(lead, category) {
                   lead.phone !== "Not Available"
                     ? `<div><strong>Phone:</strong> <span style="color:var(--text-primary)">${escapeHTML(lead.phone)}</span></div>`
                     : ""
-                } <span style="color:var(--text-primary)">${escapeHTML(lead.phone)}</span></div>
+                }</div>
                 <div><strong>Website:</strong> ${webText}</div>
             </div>
             <div class="card-message">${escapeHTML(message)}</div>
@@ -212,7 +218,7 @@ exportBtn.addEventListener("click", async () => {
   exportBtn.textContent = "Exporting...";
 
   try {
-    const res = await fetch("/export", {
+    const res = await fetch(`${BASE_URL}/export`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ leads: currentLeads }),
