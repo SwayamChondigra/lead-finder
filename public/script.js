@@ -70,7 +70,7 @@ async function searchLeads() {
       return;
     }
 
-    currentLeads = leads.filter((l) => !l.website);
+    currentLeads = leads;
     emptyState.classList.add("hidden");
     exportBtn.classList.remove("hidden");
 
@@ -79,7 +79,7 @@ async function searchLeads() {
     const statsBar = document.getElementById("statsBar");
 
     const total = leads.length;
-    const highPriority = leads.filter((l) => l.priority).length;
+    const highPriority = total;
 
     statsBar.innerHTML = `
 📊 Total: <strong>${total}</strong> 

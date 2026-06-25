@@ -32,6 +32,11 @@ app.post("/search", async (req, res) => {
     );
 
     const searchData = await searchRes.json();
+    console.log("Google API Response:", searchData.status);
+
+if (searchData.error_message) {
+  console.log(searchData.error_message);
+}
 
     let allResults = [...searchData.results];
 
