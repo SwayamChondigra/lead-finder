@@ -150,6 +150,9 @@ async function createLeadCard(lead, category) {
             <div class="card-header">
                 <div class="card-title">${escapeHTML(lead.name)}</div>
                 <div class="card-rating">⭐ ${escapeHTML(lead.rating)}</div>
+                <div class="card-rating">
+🔥 Score: ${lead.leadScore}
+</div>
             </div>
             <div style="font-size: 0.9rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.35rem;">
                 ${
@@ -157,6 +160,10 @@ async function createLeadCard(lead, category) {
                     ? `<div><strong>Phone:</strong> <span style="color:var(--text-primary)">${escapeHTML(lead.phone)}</span></div>`
                     : ""
                 }</div>
+                <div>
+  <strong>Reviews:</strong>
+  ${lead.reviews}
+</div>
                 <div><strong>Website:</strong> ${webText}</div>
             </div>
             <div class="card-message">${escapeHTML(message)}</div>
@@ -243,7 +250,6 @@ exportBtn.addEventListener("click", async () => {
       exportBtn.textContent = "Export CSV";
       exportBtn.disabled = false;
     }, 2000);
-
   } catch (e) {
     console.error(e);
     alert("Failed to export CSV");

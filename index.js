@@ -106,18 +106,26 @@ app.post("/search", async (req, res) => {
 
           return {
             name: place.name,
-            rating: place.rating || "N/A",
+            rating: place.rating || 0,
+            reviews: place.user_ratings_total || 0,
             address: place.formatted_address,
             link: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}`,
             phone,
             website,
             domain,
             priority: !website,
+            leadScore:
+              (!website ? 50 : 0) +
+              (place.rating || 0) * 10 +
+              Math.min(place.user_ratings_total || 0, 100),
           };
         }),
     );
 
-    const filtered = results.filter((r) => !r.website);
+    const filtered = results
+      .filter((r) => !r.website)
+      .sort((a, b) => b.leadScore - a.leadScore);
+
     res.json(filtered);
   } catch (err) {
     console.log("Search Error:", err);
@@ -162,10 +170,7 @@ app.post("/export", (req, res) => {
   });
 
   res.setHeader("Content-Type", "text/csv");
-  res.setHeader(
-    "Content-Disposition",
-    "attachment; filename=leads.csv"
-  );
+  res.setHeader("Content-Disposition", "attachment; filename=leads.csv");
 
   res.send(csv);
 });

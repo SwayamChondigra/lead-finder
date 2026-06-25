@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Lead Finder</string>
-    <string name="title_activity_main">Lead Finder</string>
-    <string name="package_name">com.leadfinder.app</string>
-    <string name="custom_url_scheme">com.leadfinder.app</string>
-</resources>
