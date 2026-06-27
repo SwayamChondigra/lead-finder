@@ -1,8 +1,4 @@
-const BASE_URL =
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1"
-    ? "http://192.168.1.8:5000" // your local backend
-    : ""; // Render uses same origin
+const BASE_URL = "";
 
 const searchBtn = document.getElementById("searchBtn");
 const searchInput = document.getElementById("searchInput");
