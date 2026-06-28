@@ -10,6 +10,8 @@ const toast = document.getElementById("toast");
 const emptyState = document.getElementById("emptyState");
 
 let currentLeads = [];
+let displayedCount = 0;
+const PAGE_SIZE = 10;
 
 // Escape utility function to prevent XSS and malformed HTML
 function escapeHTML(str, forAttribute = false) {
@@ -67,6 +69,10 @@ async function searchLeads() {
     }
 
     currentLeads = leads;
+    displayedCount = 0;
+    resultsContainer.innerHTML = "";
+    document.getElementById("loadMoreBtn").style.display = "none";
+
     emptyState.classList.add("hidden");
     exportBtn.classList.remove("hidden");
 
@@ -82,8 +88,7 @@ async function searchLeads() {
 • 🔴 Priority: <strong style="color:red;">${highPriority}</strong>
 `;
 
-    // Generate customized message for each lead and render card
-    await Promise.all(leads.map((lead) => createLeadCard(lead, category)));
+    displayNextLeads(category);
   } catch (error) {
     console.error("API Error:", error);
     alert(
@@ -101,7 +106,14 @@ async function createLeadCard(lead, category) {
     const msgRes = await fetch(`${BASE_URL}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, name: lead.name }),
+      body: JSON.stringify({
+        category,
+        name: lead.name,
+        rating: lead.rating,
+        reviews: lead.reviews,
+        leadScore: lead.leadScore,
+        website: lead.website,
+      }),
     });
 
     if (!msgRes.ok) {
@@ -117,9 +129,7 @@ async function createLeadCard(lead, category) {
     // Creates a new card element and appends it to the container
     const card = document.createElement("div");
     card.className = "lead-card";
-    if (lead.priority) {
-      card.style.border = "2px solid red";
-    }
+   
 
     // Add staggered animation delay
     const currentCount = document.querySelectorAll(".lead-card").length;
@@ -136,53 +146,93 @@ async function createLeadCard(lead, category) {
     `;
     } else {
       webText =
-        '<span style="color:red; font-weight:bold;">❌ No Website (High Priority)</span>';
+        '<span style="color:red; font-weight:bold;">🟢 HIGH VALUE</span>';
     }
     const whatsappLink =
       lead.phone !== "Not Available"
         ? `https://wa.me/${lead.phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`
         : null;
     card.innerHTML = `
-            <div class="card-header">
-                <div class="card-title">${escapeHTML(lead.name)}</div>
-                <div class="card-rating">⭐ ${escapeHTML(lead.rating)}</div>
-                <div class="card-rating">
-🔥 Score: ${lead.leadScore}
-</div>
-            </div>
-            <div style="font-size: 0.9rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.35rem;">
-                ${
-                  lead.phone !== "Not Available"
-                    ? `<div><strong>Phone:</strong> <span style="color:var(--text-primary)">${escapeHTML(lead.phone)}</span></div>`
-                    : ""
-                }</div>
-                <div>
-  <strong>Reviews:</strong>
-  ${lead.reviews}
-</div>
-                <div><strong>Website:</strong> ${webText}</div>
-            </div>
-            <div class="card-message">${escapeHTML(message)}</div>
-            <div class="card-actions">
+<div class="lead-top">
 
-    <button class="btn-primary copy-btn" data-msg="${escapeHTML(message, true)}">
-        Copy Msg
-    </button>
+    <div>
+        <h3 class="business-name">${escapeHTML(lead.name)}</h3>
 
-   ${
-     whatsappLink
-       ? `<a href="${whatsappLink}" target="_blank">
-        <button class="btn-success">WhatsApp</button>
-      </a>`
-       : ""
-   }
+        <div class="rating-row">
+            ⭐ ${lead.rating}
+            <span class="review-pill">${lead.reviews} Reviews</span>
+        </div>
+    </div>
 
-    <a href="${escapeHTML(lead.link)}" target="_blank">
-        <button class="btn-secondary">Open Maps</button>
-    </a>
+    <div class="score-pill">
+        🔥 ${lead.leadScore}
+    </div>
 
 </div>
-        `;
+
+<div class="info-grid">
+
+    <div>
+        📞
+        <span>${escapeHTML(lead.phone)}</span>
+    </div>
+
+    <div>
+        🌐
+        ${
+          lead.website
+            ? `<a href="${lead.website}" target="_blank">${lead.domain}</a>`
+            : `<span class="high-value">No Website</span>`
+        }
+    </div>
+
+</div>
+
+<div class="message-box">
+
+<div class="ai-title">
+🤖 AI Outreach Message
+</div>
+
+<p class="message-preview">
+
+${escapeHTML(message)}
+
+</p>
+
+</div>
+
+<div class="card-actions">
+
+<button class="btn-primary copy-btn"
+data-msg="${escapeHTML(message, true)}">
+
+📋 Copy
+
+</button>
+
+${
+  whatsappLink
+    ? `<a href="${whatsappLink}" target="_blank">
+<button class="btn-success">
+💬 WhatsApp
+</button>
+</a>`
+    : ""
+}
+
+<a href="${escapeHTML(lead.link)}" target="_blank">
+
+<button class="btn-secondary">
+
+📍 Maps
+
+</button>
+
+</a>
+
+</div>
+`;
 
     // Setting up the clipboard event for the copy button
     const copyBtn = card.querySelector(".copy-btn");
@@ -241,15 +291,47 @@ exportBtn.addEventListener("click", async () => {
     a.click();
     a.remove();
 
+    window.URL.revokeObjectURL(url);
+
     exportBtn.textContent = "Exported ✓";
+
     setTimeout(() => {
       exportBtn.textContent = "Export CSV";
       exportBtn.disabled = false;
     }, 2000);
   } catch (e) {
     console.error(e);
+
     alert("Failed to export CSV");
+
     exportBtn.disabled = false;
     exportBtn.textContent = "Export CSV";
   }
 });
+
+async function displayNextLeads(category) {
+  const nextLeads = currentLeads.slice(
+    displayedCount,
+    displayedCount + PAGE_SIZE,
+  );
+
+  await Promise.all(nextLeads.map((lead) => createLeadCard(lead, category)));
+
+  displayedCount += nextLeads.length;
+
+  const loadMoreBtn = document.getElementById("loadMoreBtn");
+
+  if (displayedCount < currentLeads.length) {
+    loadMoreBtn.style.display = "inline-block";
+  } else {
+    loadMoreBtn.style.display = "none";
+  }
+}
+
+const loadMoreBtn = document.getElementById("loadMoreBtn");
+
+if (loadMoreBtn) {
+  loadMoreBtn.addEventListener("click", () => {
+    displayNextLeads(categorySelect.value);
+  });
+}

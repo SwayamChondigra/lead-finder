@@ -4,10 +4,15 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
+const Groq = require("groq-sdk");
 
 // ✅ Fix fetch for Node
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -32,11 +37,12 @@ app.post("/search", async (req, res) => {
     );
 
     const searchData = await searchRes.json();
+
     console.log("Google API Response:", searchData.status);
 
-if (searchData.error_message) {
-  console.log(searchData.error_message);
-}
+    if (searchData.error_message) {
+      console.log(searchData.error_message);
+    }
 
     let allResults = [...searchData.results];
 
@@ -139,15 +145,56 @@ if (searchData.error_message) {
 });
 
 // ================= MESSAGE =================
-app.post("/message", (req, res) => {
-  const { category, name } = req.body;
+app.post("/message", async (req, res) => {
+  try {
+    const { category, name, rating, reviews, leadScore, website } = req.body;
 
-  const message = `Hi ${name}, I came across your business on Google Maps.
-I help local ${category}s get more customers by building modern websites.
-I created a demo idea for businesses like yours.
-Would you like to see it?`;
+    const prompt = `
+You are an expert sales copywriter.
 
-  res.json({ message });
+Generate a friendly WhatsApp outreach message.
+
+Business Details:
+- Business Name: ${name}
+- Category: ${category}
+- Rating: ${rating}
+- Reviews: ${reviews}
+- Lead Score: ${leadScore}
+- Has Website: ${website ? "Yes" : "No"}
+
+Rules:
+- Address the owner by the business name.
+- Mention the rating naturally.
+- If there is no website, explain why having one can help.
+- Mention benefits specific to the business category.
+- Keep it under 120 words.
+- Make it sound natural and human.
+- Do NOT use markdown.
+- End with:
+"Would you like to see a demo website I designed for businesses like yours?"
+`;
+
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.8,
+    });
+
+    res.json({
+      message: completion.choices[0].message.content,
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: "Failed to generate AI message.",
+    });
+  }
 });
 
 // ================= EXPORT =================
